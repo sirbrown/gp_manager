@@ -32,10 +32,10 @@ def get_google_photos_service():
 
     return build(API_SERVICE_NAME, API_VERSION, credentials=creds, static_discovery=False)
 
-def get_google_photos_filenames(service):
-    """Retrieves a set of all filenames from Google Photos."""
-    print("Fetching list of photos from Google Photos... (This may take a while for large libraries)")
-    photo_filenames = set()
+def get_google_media_filenames(service):
+    """Retrieves a set of all media filenames (photos and videos) from Google Photos."""
+    print("Fetching list of media from Google Photos... (This may take a while for large libraries)")
+    media_filenames = set()
     next_page_token = None
     while True:
         try:
@@ -44,7 +44,7 @@ def get_google_photos_filenames(service):
             
             items = results.get('mediaItems', [])
             for item in items:
-                photo_filenames.add(item['filename'])
+                media_filenames.add(item['filename'])
             
             next_page_token = results.get('nextPageToken')
             if not next_page_token:
@@ -52,27 +52,36 @@ def get_google_photos_filenames(service):
         except Exception as e:
             print(f"An error occurred: {e}")
             break
-    print(f"Found {len(photo_filenames)} photos in Google Photos.")
-    return photo_filenames
+    print(f"Found {len(media_filenames)} media items in Google Photos.")
+    return media_filenames
 
-def find_local_photos_not_in_google_photos(local_folder, google_photos_filenames):
-    """Finds local photos that are not in the Google Photos library."""
-    print("Scanning local folder for photos...")
-    photos_not_found = []
-    supported_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.heic', '.raw'}
+def find_local_media_not_in_google_photos(local_folder, google_media_filenames):
+    """Finds local media files that are not in the Google Photos library."""
+    print("Scanning local folder for photos and videos...")
+    media_not_found = []
+    
+    # Supported photo and video extensions
+    supported_extensions = {
+        # Photo formats
+        '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.heic', '.raw',
+        # Video formats
+        '.mpg', '.mpeg', '.mp4', '.mkv', '.mov', '.avi', '.wmv', '.flv', '.3gp', '.m4v', '.mts', '.m2ts'
+    }
 
     for root, _, files in os.walk(local_folder):
         for file in files:
+            # Check if the file extension is in our supported list
             if os.path.splitext(file)[1].lower() in supported_extensions:
-                if file not in google_photos_filenames:
-                    photos_not_found.append(os.path.join(root, file))
+                # Check if the filename is not in the set from Google Photos
+                if file not in google_media_filenames:
+                    media_not_found.append(os.path.join(root, file))
 
-    return photos_not_found
+    return media_not_found
 
 def main():
     """Main function to run the script."""
     service = get_google_photos_service()
-    google_photos_filenames = get_google_photos_filenames(service)
+    google_media_filenames = get_google_media_filenames(service)
 
     local_folder = input("Enter the full path to the folder you want to check: ")
 
@@ -80,19 +89,19 @@ def main():
         print("Error: The provided path is not a valid directory.")
         return
 
-    missing_photos = find_local_photos_not_in_google_photos(local_folder, google_photos_filenames)
+    missing_media = find_local_media_not_in_google_photos(local_folder, google_media_filenames)
 
-    output_file = 'photos_not_in_google_photos.txt'
-    with open(output_file, 'w') as f:
-        for photo_path in missing_photos:
-            f.write(f"{photo_path}\n")
+    output_file = 'media_not_in_google_photos.txt'
+    with open(output_file, 'w', encoding='utf-8') as f:
+        for media_path in missing_media:
+            f.write(f"{media_path}\n")
 
     print(f"\nFinished!")
-    if missing_photos:
-        print(f"{len(missing_photos)} photos were not found in Google Photos.")
-        print(f"A list of these photos has been saved to: {output_file}")
+    if missing_media:
+        print(f"{len(missing_media)} photos or videos were not found in Google Photos.")
+        print(f"A list of these files has been saved to: {output_file}")
     else:
-        print("All local photos were found in your Google Photos library.")
+        print("All local media files were found in your Google Photos library.")
 
 if __name__ == '__main__':
     main()
